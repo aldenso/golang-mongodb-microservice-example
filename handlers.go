@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -13,6 +12,20 @@ import (
 
 //Establish the main session, this comes from db.go
 var Session = NewConnection()
+
+// function to help in responses
+func JsonResponse(w http.ResponseWriter, json []byte, code int) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(code)
+	w.Write(json)
+}
+
+// function to help in error responses
+func JsonError(w http.ResponseWriter, message string, code int) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(code)
+	fmt.Fprintf(w, "{message: %q}", message)
+}
 
 func Index(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Welcome! to my first TODO API")
@@ -36,9 +49,7 @@ func TodoShow(w http.ResponseWriter, r *http.Request) {
 	var todo Todo
 	vars := mux.Vars(r)
 	if bson.IsObjectIdHex(vars["todoId"]) != true {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("bad entry for id!"))
+		JsonError(w, "bad entry for id", http.StatusBadRequest)
 		return
 	}
 	todoId := bson.ObjectIdHex(vars["todoId"])
@@ -47,17 +58,13 @@ func TodoShow(w http.ResponseWriter, r *http.Request) {
 	collection := session.DB("prod").C("todos")
 	collection.Find(bson.M{"_id": todoId}).One(&todo)
 	if todo.Id == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("todo not found!"))
+		JsonError(w, "todo not found", http.StatusNotFound)
 	} else {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		j, err := json.MarshalIndent(todo, "", "    ")
+		response, err := json.MarshalIndent(todo, "", "    ")
 		if err != nil {
 			panic(err)
 		}
-		w.Write(j)
+		JsonResponse(w, response, http.StatusOK)
 	}
 }
 
@@ -65,9 +72,7 @@ func TodoAdd(w http.ResponseWriter, r *http.Request) {
 	var todo Todo
 	json.NewDecoder(r.Body).Decode(&todo)
 	if todo.Name == "" || !todo.Completed {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect Body!"))
+		JsonError(w, "Incorrect body", http.StatusBadRequest)
 		return
 	}
 	obj_id := bson.NewObjectId()
@@ -78,10 +83,11 @@ func TodoAdd(w http.ResponseWriter, r *http.Request) {
 	collection := session.DB("prod").C("todos")
 	err := collection.Insert(todo)
 	if err != nil {
-		log.Println("Failed insert book: ", err)
+		JsonError(w, "Failed to insert todo", http.StatusInternalServerError)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Location", r.URL.Path+"/"+string(todo.Id))
+	w.Header().Set("Location", r.URL.Path+"/"+string(todo.Id.Hex()))
 	w.WriteHeader(http.StatusCreated)
 }
 
@@ -89,16 +95,12 @@ func TodoUpdate(w http.ResponseWriter, r *http.Request) {
 	var todo Todo
 	vars := mux.Vars(r)
 	if bson.IsObjectIdHex(vars["todoId"]) != true {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("bad entry for id!"))
+		JsonError(w, "bad entry for id", http.StatusBadRequest)
 		return
 	}
 	json.NewDecoder(r.Body).Decode(&todo)
 	if todo.Name == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect Body!"))
+		JsonError(w, "Incorrect body", http.StatusBadRequest)
 		return
 	}
 	todoId := bson.ObjectIdHex(vars["todoId"])
@@ -108,10 +110,11 @@ func TodoUpdate(w http.ResponseWriter, r *http.Request) {
 	err := collection.Update(bson.M{"_id": todoId},
 		bson.M{"$set": bson.M{"name": todo.Name, "completed": todo.Completed}})
 	if err != nil {
-		log.Printf("Could not find Todo %s to update", todoId)
+		JsonError(w, "Could not find Todo "+string(todoId.Hex())+" to update", http.StatusNotFound)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func TodoDelete(w http.ResponseWriter, r *http.Request) {
@@ -122,7 +125,8 @@ func TodoDelete(w http.ResponseWriter, r *http.Request) {
 	collection := session.DB("prod").C("todos")
 	err := collection.Remove(bson.M{"_id": todoId})
 	if err != nil {
-		log.Printf("Could not find Todo %s to delete", todoId)
+		JsonError(w, "Could not find Todo "+string(todoId.Hex())+" to update", http.StatusNotFound)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusNoContent)
