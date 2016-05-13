@@ -37,12 +37,11 @@ func TodoIndex(w http.ResponseWriter, r *http.Request) {
 	defer session.Close()
 	collection := session.DB("prod").C("todos")
 	collection.Find(bson.M{}).All(&todos)
-	w.Header().Set("Content-Type", "application/json")
-	j, err := json.MarshalIndent(todos, "", "    ")
+	response, err := json.MarshalIndent(todos, "", "    ")
 	if err != nil {
 		panic(err)
 	}
-	w.Write(j)
+	JsonResponse(w, response, http.StatusOK)
 }
 
 func TodoShow(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +70,7 @@ func TodoShow(w http.ResponseWriter, r *http.Request) {
 func TodoAdd(w http.ResponseWriter, r *http.Request) {
 	var todo Todo
 	json.NewDecoder(r.Body).Decode(&todo)
-	if todo.Name == "" || !todo.Completed {
+	if todo.Name == "" {
 		JsonError(w, "Incorrect body", http.StatusBadRequest)
 		return
 	}
@@ -125,9 +124,33 @@ func TodoDelete(w http.ResponseWriter, r *http.Request) {
 	collection := session.DB("prod").C("todos")
 	err := collection.Remove(bson.M{"_id": todoId})
 	if err != nil {
-		JsonError(w, "Could not find Todo "+string(todoId.Hex())+" to update", http.StatusNotFound)
+		JsonError(w, "Could not find Todo "+string(todoId.Hex())+" to delete", http.StatusNotFound)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// Search Todo by Name
+func TodoSearch(w http.ResponseWriter, r *http.Request) {
+	var todo []Todo
+	vars := mux.Vars(r)
+	todoName := vars["todoName"]
+	session := Session.Copy()
+	defer session.Close()
+	collection := session.DB("prod").C("todos")
+	err := collection.Find(bson.M{"name": bson.M{"$regex": todoName}}).All(&todo)
+	if err != nil {
+		JsonError(w, "Failed to search todo name", http.StatusInternalServerError)
+		return
+	}
+	response, err := json.MarshalIndent(todo, "", "    ")
+	if err != nil {
+		panic(err)
+	}
+	if string(response) == "null" {
+		JsonError(w, "Could not find any Todo containing "+todoName, http.StatusNotFound)
+		return
+	}
+	JsonResponse(w, response, http.StatusOK)
 }
