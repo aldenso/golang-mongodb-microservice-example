@@ -3,11 +3,10 @@ golang-mongodb-microservice-example
 
 This is a small example for a restful service using golang, mongodb and gorilla
 
-Still in progress, needs a lot of improvements...
-
 My lab consist in only one app server and one mongodb server
 
 Mongodb_Address: "192.168.125.60:27017"
+
 APP_Address: "192.168.125.1:8080"
 
 List todos:

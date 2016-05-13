@@ -1,24 +1,15 @@
 package main
 
-import (
-	"net/http"
-
-	"github.com/gorilla/mux"
-)
+import "github.com/gorilla/mux"
 
 func NewRouter() *mux.Router {
-	router := mux.NewRouter().StrictSlash(true)
-	for _, route := range routes { //this routes come from routes.go
-		var handler http.Handler
-
-		handler = route.HandlerFunc
-		handler = Logger(handler, route.Name) //related to logger.go
-
-		router. //Check routes.go
-			Methods(route.Method).
-			Path(route.Pattern).
-			Name(route.Name).
-			Handler(handler)
-	}
-	return router
+	r := mux.NewRouter().StrictSlash(true)
+	r.HandleFunc("/api/", Index).Methods("GET")
+	r.HandleFunc("/api/todos", TodoIndex).Methods("GET")
+	r.HandleFunc("/api/todos/{todoId}", TodoShow).Methods("GET")
+	r.HandleFunc("/api/todos", TodoAdd).Methods("POST")
+	r.HandleFunc("/api/todos/{todoId}", TodoUpdate).Methods("PUT")
+	r.HandleFunc("/api/todos/{todoId}", TodoDelete).Methods("DELETE")
+	r.HandleFunc("/api/todos/search/{todoName}", TodoSearch).Methods("GET")
+	return r
 }

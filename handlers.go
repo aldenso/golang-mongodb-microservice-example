@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -14,17 +15,42 @@ import (
 var Session = NewConnection()
 
 // function to help in responses
-func JsonResponse(w http.ResponseWriter, json []byte, code int) {
+func JsonResponse(w http.ResponseWriter, r *http.Request, start time.Time, response []byte, code int) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(code)
-	w.Write(json)
+	log.Printf("%s\t%s\t%s\t%s\t%d\t%d\t%s",
+		r.RemoteAddr,
+		r.Method,
+		r.RequestURI,
+		r.Proto,
+		code,
+		len(response),
+		time.Since(start),
+	)
+	if string(response) != "" {
+		w.Write(response)
+	}
 }
 
 // function to help in error responses
-func JsonError(w http.ResponseWriter, message string, code int) {
+func JsonError(w http.ResponseWriter, r *http.Request, start time.Time, message string, code int) {
+	j := map[string]string{"message": message}
+	response, err := json.Marshal(j)
+	if err != nil {
+		panic(err)
+	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(code)
-	fmt.Fprintf(w, "{message: %q}", message)
+	log.Printf("%s\t%s\t%s\t%s\t%d\t%d\t%s",
+		r.RemoteAddr,
+		r.Method,
+		r.RequestURI,
+		r.Proto,
+		code,
+		len(response),
+		time.Since(start),
+	)
+	w.Write(response)
 }
 
 func Index(w http.ResponseWriter, r *http.Request) {
@@ -32,6 +58,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 }
 
 func TodoIndex(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	var todos []Todo
 	session := Session.Copy()
 	defer session.Close()
@@ -41,14 +68,15 @@ func TodoIndex(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	JsonResponse(w, response, http.StatusOK)
+	JsonResponse(w, r, start, response, http.StatusOK)
 }
 
 func TodoShow(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	var todo Todo
 	vars := mux.Vars(r)
 	if bson.IsObjectIdHex(vars["todoId"]) != true {
-		JsonError(w, "bad entry for id", http.StatusBadRequest)
+		JsonError(w, r, start, "bad entry for id", http.StatusBadRequest)
 		return
 	}
 	todoId := bson.ObjectIdHex(vars["todoId"])
@@ -57,21 +85,22 @@ func TodoShow(w http.ResponseWriter, r *http.Request) {
 	collection := session.DB("prod").C("todos")
 	collection.Find(bson.M{"_id": todoId}).One(&todo)
 	if todo.Id == "" {
-		JsonError(w, "todo not found", http.StatusNotFound)
+		JsonError(w, r, start, "todo not found", http.StatusNotFound)
 	} else {
 		response, err := json.MarshalIndent(todo, "", "    ")
 		if err != nil {
 			panic(err)
 		}
-		JsonResponse(w, response, http.StatusOK)
+		JsonResponse(w, r, start, response, http.StatusOK)
 	}
 }
 
 func TodoAdd(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	var todo Todo
 	json.NewDecoder(r.Body).Decode(&todo)
 	if todo.Name == "" {
-		JsonError(w, "Incorrect body", http.StatusBadRequest)
+		JsonError(w, r, start, "Incorrect body", http.StatusBadRequest)
 		return
 	}
 	obj_id := bson.NewObjectId()
@@ -82,24 +111,24 @@ func TodoAdd(w http.ResponseWriter, r *http.Request) {
 	collection := session.DB("prod").C("todos")
 	err := collection.Insert(todo)
 	if err != nil {
-		JsonError(w, "Failed to insert todo", http.StatusInternalServerError)
+		JsonError(w, r, start, "Failed to insert todo", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Location", r.URL.Path+"/"+string(todo.Id.Hex()))
-	w.WriteHeader(http.StatusCreated)
+	JsonResponse(w, r, start, []byte{}, http.StatusCreated)
 }
 
 func TodoUpdate(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	var todo Todo
 	vars := mux.Vars(r)
 	if bson.IsObjectIdHex(vars["todoId"]) != true {
-		JsonError(w, "bad entry for id", http.StatusBadRequest)
+		JsonError(w, r, start, "bad entry for id", http.StatusBadRequest)
 		return
 	}
 	json.NewDecoder(r.Body).Decode(&todo)
 	if todo.Name == "" {
-		JsonError(w, "Incorrect body", http.StatusBadRequest)
+		JsonError(w, r, start, "Incorrect body", http.StatusBadRequest)
 		return
 	}
 	todoId := bson.ObjectIdHex(vars["todoId"])
@@ -109,14 +138,14 @@ func TodoUpdate(w http.ResponseWriter, r *http.Request) {
 	err := collection.Update(bson.M{"_id": todoId},
 		bson.M{"$set": bson.M{"name": todo.Name, "completed": todo.Completed}})
 	if err != nil {
-		JsonError(w, "Could not find Todo "+string(todoId.Hex())+" to update", http.StatusNotFound)
+		JsonError(w, r, start, "Could not find Todo "+string(todoId.Hex())+" to update", http.StatusNotFound)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNoContent)
+	JsonResponse(w, r, start, []byte{}, http.StatusNoContent)
 }
 
 func TodoDelete(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	vars := mux.Vars(r)
 	todoId := bson.ObjectIdHex(vars["todoId"])
 	session := Session.Copy()
@@ -124,15 +153,15 @@ func TodoDelete(w http.ResponseWriter, r *http.Request) {
 	collection := session.DB("prod").C("todos")
 	err := collection.Remove(bson.M{"_id": todoId})
 	if err != nil {
-		JsonError(w, "Could not find Todo "+string(todoId.Hex())+" to delete", http.StatusNotFound)
+		JsonError(w, r, start, "Could not find Todo "+string(todoId.Hex())+" to delete", http.StatusNotFound)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNoContent)
+	JsonResponse(w, r, start, []byte{}, http.StatusNoContent)
 }
 
 // Search Todo by Name
 func TodoSearch(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	var todo []Todo
 	vars := mux.Vars(r)
 	todoName := vars["todoName"]
@@ -141,7 +170,7 @@ func TodoSearch(w http.ResponseWriter, r *http.Request) {
 	collection := session.DB("prod").C("todos")
 	err := collection.Find(bson.M{"name": bson.M{"$regex": todoName}}).All(&todo)
 	if err != nil {
-		JsonError(w, "Failed to search todo name", http.StatusInternalServerError)
+		JsonError(w, r, start, "Failed to search todo name", http.StatusInternalServerError)
 		return
 	}
 	response, err := json.MarshalIndent(todo, "", "    ")
@@ -149,8 +178,8 @@ func TodoSearch(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	if string(response) == "null" {
-		JsonError(w, "Could not find any Todo containing "+todoName, http.StatusNotFound)
+		JsonError(w, r, start, "Could not find any Todo containing "+todoName, http.StatusNotFound)
 		return
 	}
-	JsonResponse(w, response, http.StatusOK)
+	JsonResponse(w, r, start, response, http.StatusOK)
 }
