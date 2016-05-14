@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -51,10 +50,6 @@ func JsonError(w http.ResponseWriter, r *http.Request, start time.Time, message 
 		time.Since(start),
 	)
 	w.Write(response)
-}
-
-func Index(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Welcome! to my first TODO API")
 }
 
 func TodoIndex(w http.ResponseWriter, r *http.Request) {

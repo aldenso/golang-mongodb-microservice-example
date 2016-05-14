@@ -19,6 +19,10 @@ Show a single todo (replace {id} for the equivalent bson.ObjectIdHex):
 
 Add todo:
 
+	# curl -i -H "Content-Type: application/json" -X POST -d '{"name": "Task 14", "completed": false}'  http://192.168.125.1:8080/api/todos
+
+	or
+
 	# curl -i http://192.168.125.1:8080/api/todos -X POST -d @add.json
 
 where add.json file is something like:
@@ -29,6 +33,10 @@ where add.json file is something like:
 	}
 
 Update todo (replace {id} for the equivalent bson.ObjectIdHex):
+
+	#  curl -i -H "Content-Type: application/json" -X PUT -d '{"name": "update task", "completed": false}'  http://192.168.125.1:8080/api/todos/{id}
+
+	or
 
 	# curl -i http://192.168.125.1:8080/api/todos/{id} -X PUT -d @update.json
 
