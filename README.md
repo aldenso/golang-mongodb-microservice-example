@@ -11,62 +11,67 @@ APP_Address: "192.168.125.1:8080"
 
 List todos:
 
-	# curl -i http://192.168.125.1:8080/api/todos
+		# curl -i http://192.168.125.1:8080/api/todos
 
 Show a single todo (replace {id} for the equivalent bson.ObjectIdHex):
 
-	# curl -i http://192.168.125.1:8080/api/todos/{id}
+		# curl -i http://192.168.125.1:8080/api/todos/{id}
 
 Add todo:
 
-	# curl -i -H "Content-Type: application/json" -X POST -d '{"name": "Task 14", "completed": false}'  http://192.168.125.1:8080/api/todos
+		# curl -i -H "Content-Type: application/json" -X POST -d '{"name": "Task 14", "completed": false}'  http://192.168.125.1:8080/api/todos
 
-	or
+		or
 
-	# curl -i http://192.168.125.1:8080/api/todos -X POST -d @add.json
+		# curl -i http://192.168.125.1:8080/api/todos -X POST -d @add.json
 
 where add.json file is something like:
 
-	{
-		"name":   "Task 14",
-		"completed":   false
-	}
+		{
+			"name":   "Task 14",
+			"completed":   false
+		}
 
 Update todo (replace {id} for the equivalent bson.ObjectIdHex):
 
-	#  curl -i -H "Content-Type: application/json" -X PUT -d '{"name": "update task", "completed": false}'  http://192.168.125.1:8080/api/todos/{id}
+		#  curl -i -H "Content-Type: application/json" -X PUT -d '{"name": "update task", "completed": false}'  http://192.168.125.1:8080/api/todos/{id}
 
-	or
+		or
 
-	# curl -i http://192.168.125.1:8080/api/todos/{id} -X PUT -d @update.json
+		# curl -i http://192.168.125.1:8080/api/todos/{id} -X PUT -d @update.json
 
 where update.json file is something like:
 
-	{
-		"name":   "Task X",
-		"completed":   true
-	}
+		{
+			"name":   "Task X",
+			"completed":   true
+		}
 
 Delete todo:
 
-	# curl -i http://192.168.125.1:8080/api/todos/{id} -X DELETE
+		# curl -i http://192.168.125.1:8080/api/todos/{id} -X DELETE
 
-Search todo (replace {name} for the equivalent search pattern):
+Search todo by name (replace {name} for the equivalent search pattern):
 
-	# curl -i http://192.168.125.1:8080/api/todos/search/{name}
+		# curl -i http://192.168.125.1:8080/api/todos/search/byname/{name}
 
-Log examples:
+Search todo by status completed (replace {status} for true or false ):
 
-	2016/05/13 02:01:39 192.168.125.1:15503        GET     /api/todos      HTTP/1.1        200     978     428.996µs
-	2016/05/13 02:01:47 192.168.125.1:37320        GET     /api/todos/57351be5802abd1a283a9eca     HTTP/1.1        200     135     293.129µs
-	2016/05/13 02:02:25 192.168.125.1:10409        GET     /api/todos/57351be5802abd1a283a9        HTTP/1.1        400     30      30.747µs
-	2016/05/13 02:02:32 192.168.125.1:43340        GET     /api/todos/57351be5802abd1a283a9ecb     HTTP/1.1        404     28      543.703µs
-	2016/05/13 02:03:58 192.168.125.1:61530        POST    /api/todos      HTTP/1.1        400     28      64.23µs
-	2016/05/13 02:04:23 192.168.125.1:40092        POST    /api/todos      HTTP/1.1        201     0       595.388µs
-	2016/05/13 02:04:49 192.168.125.1:13006        PUT     /api/todos/5735756fced374075efb7ef5     HTTP/1.1        204     0       1.204126ms
-	2016/05/13 02:04:58 192.168.125.1:39523        PUT     /api/todos/5735756fced374075efb7        HTTP/1.1        400     30      21.706µs
-	2016/05/13 02:05:21 192.168.125.1:17209        DELETE  /api/todos/5735756fced374075efb7ef5     HTTP/1.1        204     0       1.297254ms
-	2016/05/13 02:05:25 192.168.125.1:39753        DELETE  /api/todos/5735756fced374075efb7ef5     HTTP/1.1        404     68      365.565µs
-	2016/05/13 02:05:47 192.168.125.1:33098        GET     /api/todos/search/10    HTTP/1.1        200     166     706.37µs
-	2016/05/13 02:05:53 192.168.125.1:43079        GET     /api/todos/search/a     HTTP/1.1        200     978     750.552µs
-	2016/05/13 02:05:56 192.168.125.1:41361        GET     /api/todos/search/aq    HTTP/1.1        404     51      1.046498ms
+		# curl -i http://192.168.125.1:8080/api/todos/search/bystatus/{status}
+
+Log samples:
+
+		2016/05/29 22:50:47 192.168.0.100:46340	GET	/api/todos	HTTP/1.1	200	815	962.763µs
+		2016/05/29 22:51:06 192.168.0.100:46341	GET	/api/todos/574b4b92e561770001514888	HTTP/1.1	200	137	37.192966ms
+		2016/05/29 22:51:53 192.168.0.100:46342	POST	/api/todos	HTTP/1.1	201	0	624.235µs
+		2016/05/29 22:51:58 192.168.0.100:46343	GET	/api/todos	HTTP/1.1	200	979	799.181µs
+		2016/05/29 22:53:37 192.168.0.100:46344	PUT	/api/todos5/74baac9cdc87225dc493c0b	HTTP/1.1	404	0	0
+		2016/05/29 22:53:49 192.168.0.100:46345	PUT	/api/todos/574baac9cdc87225dc493c0b	HTTP/1.1	204	0	723.633µs
+		2016/05/29 22:53:55 192.168.0.100:46346	GET	/api/todos	HTTP/1.1	200	982	610.816µs
+		2016/05/29 22:54:25 192.168.0.100:46349	DELETE	/api/todos/574baac9cdc87225dc493c0b	HTTP/1.1	204	0	701.403µs
+		2016/05/29 22:54:27 192.168.0.100:46350	GET	/api/todos	HTTP/1.1	200	815	615.476µs
+		2016/05/29 22:55:01 192.168.0.100:46351	GET	/api/todos/search/byname/5	HTTP/1.1	200	163	579.613µs
+		2016/05/29 22:55:05 192.168.0.100:46352	GET	/api/todos/search/byname/X	HTTP/1.1	200	166	569.061µs
+		2016/05/29 22:56:51 192.168.0.100:46354	GET	/api/todos/search/byname/Tas	HTTP/1.1	200	815	684.036µs
+		2016/05/29 22:57:37 192.168.0.100:46357	GET	/api/todos/search/bystatus/true	HTTP/1.1	200	163	616.616µs
+		2016/05/29 22:57:41 192.168.0.100:46358	GET	/api/todos/search/bystatus/false	HTTP/1.1	200	654	623.589µs

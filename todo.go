@@ -6,8 +6,9 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+//Todo struct to todo
 type Todo struct {
-	Id        bson.ObjectId `bson:"_id" json:"id"`
+	ID        bson.ObjectId `bson:"_id" json:"id"`
 	Name      string        `json:"name"`
 	Completed bool          `json:"completed"`
 	Created   time.Time     `json:"createdon"`
