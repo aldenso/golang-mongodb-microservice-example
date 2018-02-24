@@ -1,11 +1,19 @@
 package main
 
-import "gopkg.in/mgo.v2"
+import (
+	"log"
+	"os"
+
+	"gopkg.in/mgo.v2"
+)
 
 // NewConnection create connection to DB
 func NewConnection() *mgo.Session {
-	session, err := mgo.Dial("192.168.125.60")
-	//session, err := mgo.Dial("172.17.0.1")
+	MONGODB := os.Getenv("MONGODB_IP")
+	if MONGODB == "" {
+		log.Fatal("You need to export MONGODB_IP environment variable")
+	}
+	session, err := mgo.Dial(MONGODB)
 	if err != nil {
 		panic(err)
 	}

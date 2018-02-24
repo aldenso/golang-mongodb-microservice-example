@@ -1,77 +1,166 @@
-golang-mongodb-microservice-example
-===================================
+# golang-mongodb-microservice-example
 
-This is a small example for a restful service using golang, mongodb and gorilla
+This is a small example for a restful service using golang, mongodb and gorilla.
 
-My lab consist in only one app server and one mongodb server
+My lab consist in only one app server and one mongodb server:
 
-Mongodb_Address: "192.168.125.60:27017"
+    Mongodb container: alpine based with default port (27017).
+    APP container:     alpine based with go program executable using port 8080.
 
-APP_Address: "192.168.125.1:8080"
+First let's create the mongodb docker image.
+
+```sh
+docker build -f Dockerfile_mongo.dockerfile . --tag aldenso:mongodb-alpine
+```
+
+Run one container.
+
+```sh
+docker run -d --name mongodb -p 27017:27017 -v /vols4docker/mongodb:/data/db \
+    aldenso:mongodb-alpine
+```
+
+Now let's build the app docker image.
+
+Build the binary.
+
+```sh
+CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-w' -o server .
+```
+
+Build the image.
+
+```sh
+docker build -f Dockerfile_goapi.dockerfile . --tag aldenso:goapi4mongo-alpine
+```
+
+export the mongodb connection info.
+
+```sh
+export MONGODB_IP="$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' mongodb)"
+```
+
+Create the app container.
+
+```sh
+docker run -d --name goapi4mongo1 -p 8080:8080 -e MONGODB_IP=$MONGODB_IP \
+    aldenso:goapi4mongo-alpine
+```
+
+Get the IP of the app container.
+
+```sh
+export APPSERVER_IP="$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' goapi4mongo1)"
+```
 
 List todos:
 
-		# curl -i http://192.168.125.1:8080/api/todos
+```sh
+curl -i http://$APPSERVER_IP:8080/api/todos
+```
 
 Show a single todo (replace {id} for the equivalent bson.ObjectIdHex):
 
-		# curl -i http://192.168.125.1:8080/api/todos/{id}
+```sh
+curl -i http://$APPSERVER_IP:8080/api/todos/{id} # Replace the {id} with one created before.
+```
 
 Add todo:
 
-		# curl -i -H "Content-Type: application/json" -X POST -d '{"name": "Task 14", "completed": false}'  http://192.168.125.1:8080/api/todos
+```sh
+curl -i -H "Content-Type: application/json" -X POST \
+    -d '{"name": "Task_14", "completed": false}'  \
+    http://$APPSERVER_IP:8080/api/todos
+```
 
-		or
+or
 
-		# curl -i http://192.168.125.1:8080/api/todos -X POST -d @add.json
+```sh
+curl -i http://$APPSERVER_IP:8080/api/todos -X POST -d @add.json
+```
 
 where add.json file is something like:
 
-		{
-			"name":   "Task 14",
-			"completed":   false
-		}
+```json
+{
+    "name":   "Task_14",
+    "completed":   false
+}
+```
 
 Update todo (replace {id} for the equivalent bson.ObjectIdHex):
 
-		#  curl -i -H "Content-Type: application/json" -X PUT -d '{"name": "update task", "completed": false}'  http://192.168.125.1:8080/api/todos/{id}
+```sh
+curl -i -H "Content-Type: application/json" -X PUT \
+    -d '{"name": "update_task", "completed": false}' \
+    http://$APPSERVER_IP:8080/api/todos/{id}
+```
 
-		or
+or
 
-		# curl -i http://192.168.125.1:8080/api/todos/{id} -X PUT -d @update.json
+```sh
+curl -i http://$APPSERVER_IP:8080/api/todos/{id} -X PUT -d @update.json
+```
 
 where update.json file is something like:
 
-		{
-			"name":   "Task X",
-			"completed":   true
-		}
+```json
+{
+    "name":   "Task_X",
+    "completed":   true
+}
+```
 
 Delete todo:
 
-		# curl -i http://192.168.125.1:8080/api/todos/{id} -X DELETE
+```sh
+curl -i http://$APPSERVER_IP:8080/api/todos/{id} -X DELETE
+```
 
 Search todo by name (replace {name} for the equivalent search pattern):
 
-		# curl -i http://192.168.125.1:8080/api/todos/search/byname/{name}
+```sh
+curl -i http://$APPSERVER_IP:8080/api/todos/search/byname/{name}
+```
 
 Search todo by status completed (replace {status} for true or false ):
 
-		# curl -i http://192.168.125.1:8080/api/todos/search/bystatus/{status}
+```sh
+curl -i http://$APPSERVER_IP:8080/api/todos/search/bystatus/{status}
+```
 
 Log samples:
 
-		2016/05/29 22:50:47 192.168.0.100:46340	GET	/api/todos	HTTP/1.1	200	815	962.763µs
-		2016/05/29 22:51:06 192.168.0.100:46341	GET	/api/todos/574b4b92e561770001514888	HTTP/1.1	200	137	37.192966ms
-		2016/05/29 22:51:53 192.168.0.100:46342	POST	/api/todos	HTTP/1.1	201	0	624.235µs
-		2016/05/29 22:51:58 192.168.0.100:46343	GET	/api/todos	HTTP/1.1	200	979	799.181µs
-		2016/05/29 22:53:37 192.168.0.100:46344	PUT	/api/todos5/74baac9cdc87225dc493c0b	HTTP/1.1	404	0	0
-		2016/05/29 22:53:49 192.168.0.100:46345	PUT	/api/todos/574baac9cdc87225dc493c0b	HTTP/1.1	204	0	723.633µs
-		2016/05/29 22:53:55 192.168.0.100:46346	GET	/api/todos	HTTP/1.1	200	982	610.816µs
-		2016/05/29 22:54:25 192.168.0.100:46349	DELETE	/api/todos/574baac9cdc87225dc493c0b	HTTP/1.1	204	0	701.403µs
-		2016/05/29 22:54:27 192.168.0.100:46350	GET	/api/todos	HTTP/1.1	200	815	615.476µs
-		2016/05/29 22:55:01 192.168.0.100:46351	GET	/api/todos/search/byname/5	HTTP/1.1	200	163	579.613µs
-		2016/05/29 22:55:05 192.168.0.100:46352	GET	/api/todos/search/byname/X	HTTP/1.1	200	166	569.061µs
-		2016/05/29 22:56:51 192.168.0.100:46354	GET	/api/todos/search/byname/Tas	HTTP/1.1	200	815	684.036µs
-		2016/05/29 22:57:37 192.168.0.100:46357	GET	/api/todos/search/bystatus/true	HTTP/1.1	200	163	616.616µs
-		2016/05/29 22:57:41 192.168.0.100:46358	GET	/api/todos/search/bystatus/false	HTTP/1.1	200	654	623.589µs
+```txt
+2018/02/24 22:11:40 172.17.0.1:56552	GET	/api/todos	HTTP/1.1	200	4	1.621415ms
+2018/02/24 22:11:53 172.17.0.1:56554	POST	/api/todos	HTTP/1.1	201	0	1.125878748s
+2018/02/24 22:13:08 172.17.0.1:56562	GET	/api/todos/	HTTP/1.1	404	0	0
+2018/02/24 22:13:10 172.17.0.1:56564	GET	/api/todos	HTTP/1.1	200	160	857.074µs
+2018/02/24 22:13:44 172.17.0.1:56568	GET	/api/todos/5a91e328d7f8960001a99aeb	HTTP/1.1	200	132	1.702964ms
+2018/02/24 22:14:40 172.17.0.1:56572	PUT	/api/todos/5a91e328d7f8960001a99aeb	HTTP/1.1	204	0	37.554697ms
+2018/02/24 22:16:34 172.17.0.1:56580	GET	/api/todos	HTTP/1.1	200	159	898.811µs
+2018/02/24 22:18:51 172.17.0.1:56592	GET	/api/todos/search/byname/Task	HTTP/1.1	200	159	901.338µs
+2018/02/24 22:20:20 172.17.0.1:56600	GET	/api/todos/search/bystatus/false	HTTP/1.1	200	159	1.013693ms
+2018/02/24 22:23:01 172.17.0.1:56618	POST	/api/todos	HTTP/1.1	201	0	907.716µs
+2018/02/24 22:26:45 172.17.0.1:56634	GET	/api/todos	HTTP/1.1	200	314	992.902µs
+2018/02/24 22:27:19 172.17.0.1:56640	DELETE	/api/todos/5a91e328d7f8960001a99aeb	HTTP/1.1	204	0	1.193428ms
+2018/02/24 22:27:31 172.17.0.1:56642	DELETE	/api/todos/5a91e5c5d7f8960001a99aec	HTTP/1.1	204	0	3.093297ms
+```
+
+After playing with the api you can stop the containers.
+
+```sh
+docker stop goapi4mongo1 mongodb
+```
+
+Just for your information, check your new images and you'll confirm the small size of them.
+
+```sh
+docker images
+```
+
+```txt
+REPOSITORY              TAG                  IMAGE ID            CREATED             SIZE
+aldenso                 goapi4mongo-alpine   b9ba2da7dc62        About an hour ago   9.64MB
+aldenso                 mongodb-alpine       0e53354d7bc1        About an hour ago   106MB
+```
