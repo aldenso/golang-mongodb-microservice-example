@@ -44,7 +44,7 @@ Create the app container.
 
 ```sh
 docker run -d --name goapi4mongo1 -p 8080:8080 -e MONGODB_IP=$MONGODB_IP \
-    aldenso:goapi4mongo-alpine
+    --restart=on-failure aldenso:goapi4mongo-alpine
 ```
 
 Get the IP of the app container.
